@@ -8,7 +8,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    pkg_share = get_package_share_directory('p1_world')
+    pkg_share = get_package_share_directory('p2_world')
     default_world = os.path.join(pkg_share, 'worlds', 'world.sdf')
 
     world = LaunchConfiguration('world')
@@ -23,9 +23,9 @@ def generate_launch_description():
     tb4_sim_launch = os.path.join(nav2_share, 'launch', 'tb4_simulation_launch.py')
     
     controller = Node(
-    package='project1_control',
+    package='project2_control',
     executable='controller',
-    name='project1_controller',
+    name='project2_controller',
     output='screen'
     )
 

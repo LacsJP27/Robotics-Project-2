@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-package_name = 'project1_control'
+package_name = 'project2_control'
 
 setup(
     name=package_name,
@@ -21,7 +21,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'controller = project1_control.controller_node:main',
+            'controller = project2_control.controller_node:main',
         ],
     },
 )
