@@ -32,6 +32,8 @@ def angle_diff(target: float, current: float) -> float:
 # clear the obstacle, or we have a bad scan reading that 
 # triggers escape but there's actually no obstacle there)
 ESCAPE_TIMEOUT_SEC = 3.0
+ESCAPE_COOLDOWN_S = 1.5
+AVOID_COOLDOWN_S = 1.0
 
 class Project1Controller(Node):
 
@@ -85,8 +87,10 @@ class Project1Controller(Node):
         # Behavior 3 (Escape) state
         self.escape_active = False
         self.escape_target_yaw = 0.0
+        self.escape_cooldown_end = 0.0
         self.avoid_active = False
         self.avoid_target_yaw = 0.0
+        self.avoid_cooldown_end = 0.0
 
         # Behavior 5 (Random turn) state
         self.random_turn_active = False
@@ -240,6 +244,7 @@ class Project1Controller(Node):
             if abs(angle_diff(self.escape_target_yaw, self.yaw)) < 0.05 or elapsed > ESCAPE_TIMEOUT_SEC:
                 self.get_logger().info("ESCAPE COMPLETE" if elapsed <= ESCAPE_TIMEOUT_SEC else "ESCAPE TIMEOUT")
                 self.escape_active = False
+                self.escape_cooldown_end = time.time() + ESCAPE_COOLDOWN_S
             self.cmd_pub.publish(msg)
             return
 
@@ -249,7 +254,7 @@ class Project1Controller(Node):
         # here so that it will start as soon as those conditions are met even 
         # if we happen to be in the middle of another behavior like a random 
         # turn when that happens
-        if self.symmetric_obstacles() or self.front_is_blocked():
+        if (self.symmetric_obstacles() or self.front_is_blocked()) and time.time() > self.escape_cooldown_end:
             self.start_escape()
             msg = self.rotate_toward(self.escape_target_yaw)
             self.cmd_pub.publish(msg)
@@ -260,6 +265,7 @@ class Project1Controller(Node):
             msg = self.rotate_toward(self.avoid_target_yaw)
             if abs(angle_diff(self.avoid_target_yaw, self.yaw)) < 0.05:
                 self.avoid_active = False
+                self.avoid_cooldown_end = time.time() + AVOID_COOLDOWN_S
                 self.last_turn_x = self.x
                 self.last_turn_y = self.y
             self.cmd_pub.publish(msg)
@@ -268,7 +274,7 @@ class Project1Controller(Node):
         # interrupt that behavior but before random turn to ensure 
         # it does interrupt if we happen to detect an asymmetric 
         # obstacle during a random turn
-        if self.asymmetric_obstacles():
+        if self.asymmetric_obstacles() and time.time() > self.avoid_cooldown_end:
             self.start_avoid_turn()
             msg = self.rotate_toward(self.avoid_target_yaw)
             self.cmd_pub.publish(msg)
