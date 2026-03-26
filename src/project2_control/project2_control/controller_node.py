@@ -308,7 +308,7 @@ class Project1Controller(Node):
 
         # small bias away from closer side (gentle, not "avoid")
         if math.isfinite(self.min_left) and math.isfinite(self.min_right):
-            diff = self.min_right - self.min_left  # positive means left is closer
+            diff = self.min_left - self.min_right # positive means left is closer
             k = 0.6  # steering gain (tune 0.3 to 1.0)
             msg.twist.angular.z = max(min(k * diff, 0.6), -0.6)
         else:
