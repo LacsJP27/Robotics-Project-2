@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 
@@ -39,7 +39,7 @@ class Project1Controller(Node):
         super().__init__('project1_controller')
 
         # Publishers
-        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.cmd_pub = self.create_publisher(TwistStamped, '/cmd_vel', 10)
 
         # Subscriptions
         self.scan_sub = self.create_subscription(LaserScan, '/scan', self.scan_callback, 10)
@@ -187,13 +187,13 @@ class Project1Controller(Node):
         self.escape_active = False        # mutual exclusion
         self.random_turn_active = False   # mutual exclusion
 
-    def rotate_toward(self, target_yaw: float) -> Twist:
-        msg = Twist()
+    def rotate_toward(self, target_yaw: float) -> TwistStamped:
+        msg = TwistStamped()
         err = angle_diff(target_yaw, self.yaw)
         if abs(err) < 0.05:
-            msg.angular.z = 0.0
+            msg.twist.angular.z = 0.0
         else:
-            msg.angular.z = self.turn_speed if err > 0.0 else -self.turn_speed
+            msg.twist.angular.z = self.turn_speed if err > 0.0 else -self.turn_speed
         return msg
 
     def dist_since_last_turn(self) -> float:
@@ -210,7 +210,7 @@ class Project1Controller(Node):
         if not (self.have_scan and self.have_odom):
             return
 
-        msg = Twist()
+        msg = TwistStamped()
 
         # PRIORITY 1: Halt on collision
         if self.is_colliding:
@@ -218,13 +218,15 @@ class Project1Controller(Node):
                 self.start_escape()
             msg = self.rotate_toward(self.escape_target_yaw)
             # Guarantee no forward motion while colliding
-            msg.linear.x = 0.0
+            msg.twist.linear.x = 0.0
             self.cmd_pub.publish(msg)
             return
             
         # PRIORITY 2: Keyboard commands (only if recent)
         if self.key_is_active():
-            self.cmd_pub.publish(self.manual_twist)
+            stamped = TwistStamped()
+            stamped.twist = self.manual_twist
+            self.cmd_pub.publish(stamped)
             return
 
         # PRIORITY 3: Escape (fixed action pattern)
@@ -296,15 +298,15 @@ class Project1Controller(Node):
             return
 
         # PRIORITY 6: Drive forward
-        msg.linear.x = self.forward_speed
+        msg.twist.linear.x = self.forward_speed
 
         # small bias away from closer side (gentle, not "avoid")
         if math.isfinite(self.min_left) and math.isfinite(self.min_right):
             diff = self.min_right - self.min_left  # positive means left is closer
             k = 0.6  # steering gain (tune 0.3 to 1.0)
-            msg.angular.z = max(min(k * diff, 0.6), -0.6)
+            msg.twist.angular.z = max(min(k * diff, 0.6), -0.6)
         else:
-            msg.angular.z = 0.0
+            msg.twist.angular.z = 0.0
 
         self.cmd_pub.publish(msg)
 
