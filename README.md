@@ -37,10 +37,3 @@ For keyboard control:
 ```
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r /cmd_vel:=/cmd_vel_key
 ```
-
-ros2 pkg prefix turtlebot4_navigation
-ls $(ros2 pkg prefix turtlebot4_navigation)/share/turtlebot4_navigation/launch/
-
-ros2 launch slam_toolbox online_async_launch.py use_sim_time:=false
-
-Mention the timeout stuff with avoid and escape, launch file, inverted difference for avoid calculation, TwistStamp change 
