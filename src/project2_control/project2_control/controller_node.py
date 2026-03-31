@@ -221,9 +221,6 @@ class Project1Controller(Node):
 
         # PRIORITY 1: Halt on collision
         if self.is_colliding:
-            # if not self.escape_active:
-            #     self.start_escape()
-            # msg = self.rotate_toward(self.escape_target_yaw)
             # Guarantee no forward motion while colliding
             self.get_logger().info("COLLIDING")
 
@@ -240,25 +237,7 @@ class Project1Controller(Node):
 
         # PRIORITY 3: Escape (fixed action pattern)
 
-        if self.escape_active:arget_yaw)
-            self.cmd_pub.publish(msg)
-            return
-
-        # PRIORITY 5: Random turn after every 1ft of forward travel
-        if self.random_turn_active:
-            self.get_logger().info("RANDOM TURN")
-
-            msg = self.rotate_toward(self.random_target_yaw)
-            # If we happen to hit the distance threshold during a random turn, 
-            # #we want to finish that turn before starting another one, 
-            # so we check distance in the separate if below instead of 
-            # interrupting and starting a new random turn here
-            if abs(angle_diff(self.random_target_yaw, self.yaw)) < 0.05:
-                self.random_turn_active = False
-                self.last_turn_x = self.x
-                self.last_turn_y = self.y
-            self.get_logger().info("ESCAPING")
-
+        if self.escape_active:
             msg = self.rotate_toward(self.escape_target_yaw)
             elapsed = (self.get_clock().now() - self.escape_start_time).nanoseconds / 1e9
             
@@ -285,8 +264,6 @@ class Project1Controller(Node):
 
         # PRIORITY 4: Avoid (reflex)
         if self.avoid_active:
-            self.get_logger().info("AVOIDING")
-
             msg = self.rotate_toward(self.avoid_target_yaw)
             if abs(angle_diff(self.avoid_target_yaw, self.yaw)) < 0.05:
                 self.avoid_active = False
@@ -307,8 +284,6 @@ class Project1Controller(Node):
 
         # PRIORITY 5: Random turn after every 1ft of forward travel
         if self.random_turn_active:
-            self.get_logger().info("RANDOM TURN")
-
             msg = self.rotate_toward(self.random_target_yaw)
             # If we happen to hit the distance threshold during a random turn, 
             # #we want to finish that turn before starting another one, 
@@ -332,15 +307,6 @@ class Project1Controller(Node):
 
         # PRIORITY 6: Drive forward
         msg.twist.linear.x = self.forward_speed
-
-
-        # small bias away from closer side (gentle, not "avoid")
-        if math.isfinite(self.min_left) and math.isfinite(self.min_right):
-            diff = self.min_left - self.min_right # positive means left is closer
-            k = 0.6  # steering gain (tune 0.3 to 1.0)
-            msg.twist.angular.z = max(min(k * diff, 0.6), -0.6)
-        else:
-            msg.twist.angular.z = 0.0
 
         self.cmd_pub.publish(msg)
 
