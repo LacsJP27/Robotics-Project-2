@@ -226,6 +226,7 @@ class Project1Controller(Node):
 
             msg.twist.linear.x = 0.0
             self.cmd_pub.publish(msg)
+            self.timer.cancel()
             return
             
         # PRIORITY 2: Keyboard commands (only if recent)

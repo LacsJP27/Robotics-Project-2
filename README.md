@@ -28,9 +28,19 @@ Build packages
 colcon build --symlink-install
 ```
 
+source ros2
+```
+source install/setup.bash
+```
+
 Run the launch file
 ```
  ros2 launch p2_world tb4_real.launch.py
+```
+
+To stop LiDAR:
+```
+ros2 service call /stop_motor std_srvs/srv/Empty "{}"
 ```
 
 For keyboard control:
