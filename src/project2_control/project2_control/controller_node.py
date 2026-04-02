@@ -235,10 +235,33 @@ class Project1Controller(Node):
             stamped.twist = self.manual_twist
             self.cmd_pub.publish(stamped)
             return
+        
+                # Note: we check for escape first since it has a timeout 
+        # and we don't want to interrupt it, but we check for the 
+        # conditions that trigger it (symmetric obstacles or front blocked) 
+        # here so that it will start as soon as those conditions are met even 
+        # if we happen to be in the middle of another behavior like a random 
+        # turn when that happens
+
+            # Note: this check is after escape to ensure it doesn't 
+        # interrupt that behavior but before random turn to ensure 
+        # it does interrupt if we happen to detect an asymmetric 
+        # obstacle during a random turn
+        if self.asymmetric_obstacles():
+            self.start_avoid_turn()
+            msg = self.rotate_toward(self.avoid_target_yaw)
+            self.cmd_pub.publish(msg)
+            return
+        elif (self.symmetric_obstacles() or self.front_is_blocked()) and time.time() > self.escape_cooldown_end:
+            self.start_escape()
+            msg = self.rotate_toward(self.escape_target_yaw)
+            self.cmd_pub.publish(msg)
+            return
+
 
         # PRIORITY 3: Escape (fixed action pattern)
 
-        if self.escape_active:
+        if self.escape_active and not self.avoid_active:
             msg = self.rotate_toward(self.escape_target_yaw)
             elapsed = (self.get_clock().now() - self.escape_start_time).nanoseconds / 1e9
             
@@ -251,37 +274,33 @@ class Project1Controller(Node):
             self.cmd_pub.publish(msg)
             return
 
-        # Note: we check for escape first since it has a timeout 
-        # and we don't want to interrupt it, but we check for the 
-        # conditions that trigger it (symmetric obstacles or front blocked) 
-        # here so that it will start as soon as those conditions are met even 
-        # if we happen to be in the middle of another behavior like a random 
-        # turn when that happens
-        if (self.symmetric_obstacles() or self.front_is_blocked()) and time.time() > self.escape_cooldown_end:
-            self.start_escape()
-            msg = self.rotate_toward(self.escape_target_yaw)
-            self.cmd_pub.publish(msg)
-            return
-
-        # PRIORITY 4: Avoid (reflex)
-        if self.avoid_active:
-            msg = self.rotate_toward(self.avoid_target_yaw)
-            if abs(angle_diff(self.avoid_target_yaw, self.yaw)) < 0.05:
-                self.avoid_active = False
-                self.avoid_cooldown_end = time.time() + AVOID_COOLDOWN_S
-                self.last_turn_x = self.x
-                self.last_turn_y = self.y
-            self.cmd_pub.publish(msg)
-            return
-        # Note: this check is after escape to ensure it doesn't 
+            # Note: this check is after escape to ensure it doesn't 
         # interrupt that behavior but before random turn to ensure 
         # it does interrupt if we happen to detect an asymmetric 
         # obstacle during a random turn
-        if self.asymmetric_obstacles() and time.time() > self.avoid_cooldown_end:
-            self.start_avoid_turn()
-            msg = self.rotate_toward(self.avoid_target_yaw)
+        # if self.asymmetric_obstacles():
+        #     self.start_avoid_turn()
+        #     msg = self.rotate_toward(self.avoid_target_yaw)
+        #     self.cmd_pub.publish(msg)
+        #     return
+
+        # PRIORITY 4: Avoid (reflex)
+        if self.avoid_active and not self.escape_active:
+            self.get_logger().info("AVOID")
+
+            err = angle_diff(self.avoid_target_yaw, self.yaw)
+            msg = TwistStamped()
+            # msg.twist.angular.z = self.turn_speed if err > 0.0 else -self.turn_speed
+            msg.twist.angular.z = self.turn_speed
+
+            # if abs(angle_diff(self.avoid_target_yaw, self.yaw)) < 0.05:
+            self.avoid_active = False
+            #     # self.avoid_cooldown_end = time.time() + AVOID_COOLDOWN_S
+            #     self.last_turn_x = self.x
+            #     self.last_turn_y = self.y
             self.cmd_pub.publish(msg)
             return
+   
 
         # PRIORITY 5: Random turn after every 1ft of forward travel
         if self.random_turn_active:
